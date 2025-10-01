@@ -125,6 +125,7 @@ app.post("/api/checkout", async (req, res) => {
           quantity: 1
         }
       ],
+      metadata: { sku, destination }, // ✅ Add this line
       success_url: "https://your-frontend.com/success?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: "https://your-frontend.com/cancel"
     });
@@ -137,9 +138,11 @@ app.post("/api/checkout", async (req, res) => {
     });
   }
 });
+
 import bodyParser from "body-parser";
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
 
 // Stripe Webhook (payment confirmation)
 app.post(
@@ -193,5 +196,6 @@ app.post(
 );
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
 
 
