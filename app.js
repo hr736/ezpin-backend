@@ -104,5 +104,39 @@ app.post("/api/order", async (req, res) => {
     });
   }
 });
+import Stripe from "stripe";
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// 💳 Stripe Checkout Route
+app.post("/api/checkout", async (req, res) => {
+  try {
+    const { sku, price, destination } = req.body;
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: { name: `Gift Card SKU ${sku}` },
+            unit_amount: price * 100
+          },
+          quantity: 1
+        }
+      ],
+      success_url: "https://your-frontend.com/success?session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: "https://your-frontend.com/cancel"
+    });
+
+    res.json({ url: session.url });
+  } catch (err) {
+    res.status(500).json({
+      message: "❌ Stripe Checkout error",
+      error: err.message
+    });
+  }
+});
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
