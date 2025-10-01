@@ -137,6 +137,61 @@ app.post("/api/checkout", async (req, res) => {
     });
   }
 });
+import bodyParser from "body-parser";
+
+const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+// Stripe Webhook (payment confirmation)
+app.post(
+  "/webhook",
+  bodyParser.raw({ type: "application/json" }),
+  async (req, res) => {
+    const sig = req.headers["stripe-signature"];
+
+    let event;
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    } catch (err) {
+      console.log("Webhook signature verification failed:", err.message);
+      return res.sendStatus(400);
+    }
+
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object;
+      console.log("💰 Payment success for session:", session.id);
+
+      // Extract metadata (you’ll add these later in checkout)
+      const sku = session.metadata?.sku;
+      const price = session.amount_total / 100;
+      const destination = session.metadata?.destination;
+
+      if (sku && destination) {
+        try {
+          const token = await getAuthToken();
+          const ref = uuidv4();
+          const order = {
+            sku,
+            quantity: 1,
+            price,
+            pre_order: false,
+            delivery_type: 1,
+            destination,
+            reference_code: ref,
+          };
+          await axios.post(`${EZPIN_BASE}/orders/`, order, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          console.log("🎁 Gift card sent for", destination);
+        } catch (err) {
+          console.error("❌ Failed to create order:", err.message);
+        }
+      }
+    }
+
+    res.json({ received: true });
+  }
+);
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
 
